@@ -330,6 +330,12 @@ int wdt_on(bpctl_dev_t *pbpctl_dev, unsigned int timeout);
 #define PDE_DATA pde_data
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0))
+#ifndef PDE_DATA
+#define PDE_DATA pde_data
+#endif
+#endif
+
 static int bp_get_dev_idx_bsf(struct net_device *dev, int *index)
 {
 	struct ethtool_drvinfo drvinfo = {0};
@@ -3871,7 +3877,11 @@ static void wd_reset_timer(unsigned long param){
     bpctl_dev_t *pbpctl_dev= (bpctl_dev_t *) param;
 #else
 static void wd_reset_timer(struct timer_list *t){
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0))
     bpctl_dev_t *pbpctl_dev= from_timer(pbpctl_dev, t, bp_timer);
+#else
+    bpctl_dev_t *pbpctl_dev= timer_container_of(pbpctl_dev, t, bp_timer);
+#endif
 #endif
 #ifdef BP_SELF_TEST
     struct sk_buff *skb_tmp; 
@@ -5157,7 +5167,11 @@ void remove_bypass_wd_auto(bpctl_dev_t *pbpctl_dev){
 
     if (pbpctl_dev->bp_caps&WD_CTL_CAP) {
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,15,0))
         del_timer_sync(&pbpctl_dev->bp_timer);
+#else
+        timer_delete_sync(&pbpctl_dev->bp_timer);
+#endif
 #ifdef BP_SELF_TEST
         pbpctl_dev_sl= get_status_port_fn(pbpctl_dev);
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,31))
@@ -6964,7 +6978,11 @@ static void bp_tpl_timer_fn(unsigned long param){
     bpctl_dev_t *pbpctl_dev=(bpctl_dev_t *) param;
 #else
 static void bp_tpl_timer_fn(struct timer_list *t){
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0))
     bpctl_dev_t *pbpctl_dev=from_timer(pbpctl_dev, t, bp_tpl_timer);
+#else
+    bpctl_dev_t *pbpctl_dev=timer_container_of(pbpctl_dev, t, bp_tpl_timer);
+#endif
 #endif
     uint32_t link1, link2;
     bpctl_dev_t *pbpctl_dev_b=NULL;
@@ -7042,7 +7060,11 @@ void remove_bypass_tpl_auto(bpctl_dev_t *pbpctl_dev){
 
     if (pbpctl_dev->bp_caps&TPL_CAP) {
         if (get_tpl_fn(pbpctl_dev)) {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,15,0))
             del_timer_sync(&pbpctl_dev->bp_tpl_timer);
+#else
+            timer_delete_sync(&pbpctl_dev->bp_tpl_timer);
+#endif
             pbpctl_dev->bp_tpl_flag=0;
             pbpctl_dev_b=get_status_port_fn(pbpctl_dev);
             if (pbpctl_dev_b) {
@@ -7874,7 +7896,11 @@ static void bpvm_led_blink_callback(unsigned long data)
 #else
 static void bpvm_led_blink_callback(struct timer_list *t)
 {
-	bpctl_dev_t *pbpctl_dev = from_timer(pbpctl_dev, t, blink_timer);
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0))
+    bpctl_dev_t *pbpctl_dev = from_timer(pbpctl_dev, t, blink_timer);
+#else
+	bpctl_dev_t *pbpctl_dev = timer_container_of(pbpctl_dev, t, blink_timer);
+#endif
 #endif
 
     if (test_and_change_bit(0, (volatile unsigned long *)&pbpctl_dev->led_status)) {
@@ -7894,10 +7920,18 @@ wait_callback(unsigned long data)
 #else
 wait_callback(struct timer_list *t)
 {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,16,0))
     bpctl_dev_t *pbpctl_dev = from_timer(pbpctl_dev, t, wait_timer);
+#else
+    bpctl_dev_t *pbpctl_dev = timer_container_of(pbpctl_dev, t, wait_timer);
+#endif 
 #endif 
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,15,0))
     del_timer_sync(&pbpctl_dev->blink_timer);
+#else
+    timer_delete_sync(&pbpctl_dev->blink_timer);
+#endif
 
     bpvm_led_off(pbpctl_dev);
     clear_bit(0, (volatile unsigned long *)&pbpctl_dev->led_status);
@@ -7968,8 +8002,13 @@ bpvm_blink(bpctl_dev_t *pbpctl_dev, uint32_t data)
 	}
 
     if (pbpctl_dev->blink_timer.function) {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,15,0))
         del_timer_sync(&pbpctl_dev->wait_timer);
         del_timer_sync(&pbpctl_dev->blink_timer);
+#else
+        timer_delete_sync(&pbpctl_dev->wait_timer);
+        timer_delete_sync(&pbpctl_dev->blink_timer);
+#endif
         bpvm_led_off(pbpctl_dev);
         clear_bit(0, (volatile unsigned long *)&pbpctl_dev->led_status);
         bpvm_cleanup_led(pbpctl_dev);    
