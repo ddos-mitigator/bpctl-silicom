@@ -20,7 +20,9 @@ install_sources:
 	cp -t $(DKMS_DSTDIR)/ $(CURDIR)/*
 	sed -i "s/@MOD_NAME@/$(MOD_NAME)/g" "$(DKMS_DSTDIR)/dkms.conf"
 	sed -i "s/@MOD_VERSION@/$(MOD_VERSION)/g" "$(DKMS_DSTDIR)/dkms.conf"
-	dkms add -m $(MOD_NAME) -v $(MOD_VERSION)
+	if ! dkms status -m $(MOD_NAME) -v $(MOD_VERSION) >/dev/null 2>&1; then \
+		dkms add -m $(MOD_NAME) -v $(MOD_VERSION); \
+	fi
 
 uninstall:
 	dkms remove -m $(MOD_NAME) -v $(MOD_VERSION) --all
